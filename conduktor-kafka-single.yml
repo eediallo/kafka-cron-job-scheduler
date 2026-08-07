@@ -9,12 +9,18 @@ services:
       POSTGRES_USER: "conduktor"
       POSTGRES_PASSWORD: "some_password"
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
+
   conduktor-console:
     image: conduktor/conduktor-console:1.46.2
     ports:
       - "8080:8080"
     volumes:
       - conduktor_data:/var/conduktor
+    depends_on:
+      postgresql:
+        condition: service_started
+      init-kafka:
+        condition: service_completed_successfully
     environment:
       CDK_DATABASE_URL: "postgresql://conduktor:some_password@postgresql:5432/conduktor-console"
       CDK_CLUSTERS_0_ID: "default"
@@ -45,32 +51,42 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_NUM_PARTITIONS: 2 # Default partition count for auto-created topics
       KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka1:19092 --list || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   init-kafka:
     image: confluentinc/cp-kafka:8.0.0
     depends_on:
-      - kafka1
+      kafka1:
+        condition: service_healthy
     entrypoint: ['/bin/sh', '-c']
-    command: >
-      "
-      # Wait for kafka readiness
-      kafka-topics --bootstrap-server kafka1:19092 --list
-      
-      echo 'Creating cron-jobs topic with 2 partitions...'
-      kafka-topics --bootstrap-server kafka1:19092 --create --if-not-exists \
+    command: |
+      set -ex
+      until kafka-topics --bootstrap-server kafka1:19092 --list; do
+        echo "Waiting..."
+        sleep 2
+      done
+      kafka-topics \
+        --bootstrap-server kafka1:19092 \
+        --create \
+        --if-not-exists \
         --topic cron-jobs \
         --partitions 2 \
         --replication-factor 1
-      "
 
   producer:
     build:
       context: .
       dockerfile: Dockerfile.producer
     depends_on:
-      - init-kafka
+      init-kafka:
+        condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
       KAFKA_TOPIC: "cron-jobs"
@@ -80,7 +96,8 @@ services:
       context: .
       dockerfile: Dockerfile.consumer
     depends_on:
-      - init-kafka
+      init-kafka:
+        condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
       KAFKA_TOPIC: "cron-jobs"
@@ -91,11 +108,13 @@ services:
       context: .
       dockerfile: Dockerfile.consumer
     depends_on:
-      - init-kafka
+      init-kafka:
+        condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
       KAFKA_TOPIC: "cron-jobs"
       CONSUMER_ID: "Consumer-2"
+
 volumes:
   pg_data: {}
   conduktor_data: {}
