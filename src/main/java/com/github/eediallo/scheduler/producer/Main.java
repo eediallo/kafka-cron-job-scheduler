@@ -1,4 +1,4 @@
-package com.github.eediallo.scheduler;
+package com.github.eediallo.scheduler.producer;
 
 import org.quartz.SchedulerException;
 
@@ -8,11 +8,20 @@ public class Main {
 
     public static void main(String[] args) {
         String filePath = args.length > 0 ? args[0] : "crontab.txt";
+        String bootstrapServers = System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "localhost:19092");
+        String topic = System.getenv("KAFKA_TOPIC");
         try {
-            CronSchedulerService schedulerService = new CronSchedulerService();
+            KafkaMessageProducer producer = new KafkaMessageProducer(bootstrapServers, topic);
+            CronSchedulerService schedulerService = new CronSchedulerService(producer);
+
             schedulerService.loadAndScheduleJobs(filePath);
             schedulerService.start();
+
             System.out.println("Cron Scheduler Running... Ctrl + c to exit");
+
+            // prevent JVM from exiting immediately
+            Thread.currentThread().join();
+
         } catch (IOException e) {
             System.err.println("File Error: Could not read crontab file at '" + filePath + "' ." + e.getMessage());
             System.exit(1);

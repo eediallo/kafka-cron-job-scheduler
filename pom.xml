@@ -64,7 +64,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.github.eediallo.scheduler.Main</mainClass>
+                            <mainClass>com.github.eediallo.scheduler.producer.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

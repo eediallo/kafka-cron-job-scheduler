@@ -1,2 +1,2 @@
-* * * * *
-15 * * * *
+* * * * * echo "Running every minute cron job"
+15 * * * * echo "Running job at minute 15"
