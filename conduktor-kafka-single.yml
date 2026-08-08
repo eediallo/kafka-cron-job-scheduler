@@ -91,7 +91,10 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
       KAFKA_TOPIC: "cron-jobs"
 
-  consumer-1:
+  # ==========================================
+  # CLUSTER-A WORKERS (Main & Retry)
+  # ==========================================
+  consumer-cluster-a-main:
     build:
       context: .
       dockerfile: Dockerfile.consumer
@@ -100,10 +103,10 @@ services:
         condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
-      KAFKA_TOPIC: "cron-jobs"
-      CONSUMER_ID: "Consumer-1"
+      KAFKA_TOPIC: "cron-jobs-cluster-a"
+      CONSUMER_ID: "Cluster-A-Main-Worker"
 
-  consumer-2:
+  consumer-cluster-a-retry:
     build:
       context: .
       dockerfile: Dockerfile.consumer
@@ -112,8 +115,35 @@ services:
         condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
-      KAFKA_TOPIC: "cron-jobs"
-      CONSUMER_ID: "Consumer-2"
+      KAFKA_TOPIC: "cron-jobs-cluster-a-retry"
+      CONSUMER_ID: "Cluster-A-Retry-Worker"
+
+  # ==========================================
+  # CLUSTER-B WORKERS (Main & Retry)
+  # ==========================================
+  consumer-cluster-b-main:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    depends_on:
+      init-kafka:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
+      KAFKA_TOPIC: "cron-jobs-cluster-b"
+      CONSUMER_ID: "Cluster-B-Main-Worker"
+
+  consumer-cluster-b-retry:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    depends_on:
+      init-kafka:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka1:19092"
+      KAFKA_TOPIC: "cron-jobs-cluster-b-retry"
+      CONSUMER_ID: "Cluster-B-Retry-Worker"
 
 volumes:
   pg_data: {}
