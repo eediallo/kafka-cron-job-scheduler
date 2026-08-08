@@ -1,4 +1,4 @@
-package com.github.eediallo.scheduler;
+package com.github.eediallo.scheduler.producer;
 
 public class CronParserUtils {
     public static String toQuartzCron(String standardCron) {

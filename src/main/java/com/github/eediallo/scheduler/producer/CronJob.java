@@ -17,12 +17,15 @@ public class CronJob implements Job {
                 cluster = "cluster-a"; // fallback default when cluster is not specified
             }
 
-            String topicNam  = "cron=jobs-" + cluster.toLowerCase().trim();
+            String topicName  = "cron-jobs-" + cluster.toLowerCase().trim();
 
             String jobId = "job_" + lineNumber;
 
             String command = String.valueOf(context.getMergedJobDataMap().get("command"));
-            producer.sendJobTopic(topicNam, jobId, command, cluster);
+
+            int maxAttempts = context.getMergedJobDataMap().getInt("maxAttempts");
+
+            producer.sendJobTopic(topicName, jobId, command, cluster, maxAttempts);
 
         } catch (SchedulerException e) {
             throw new RuntimeException(e);
