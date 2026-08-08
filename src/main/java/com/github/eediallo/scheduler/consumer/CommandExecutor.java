@@ -5,17 +5,34 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 
 public class CommandExecutor {
     private final Logger log = LoggerFactory.getLogger(CommandExecutor.class);
 
-    public void execute(String consumerId, JobPayload jobPayload, int partition) {
+    public void execute(String topic, String consumerId, JobPayload jobPayload, int partition) {
         String command = jobPayload.getCommand();
-        log.info("[{}] RECEIVED JOB -> ID: {}, Command: '{}' , ScheduledAt: '{}' Partition: [Partition: {}]", consumerId, jobPayload.getJobId(), jobPayload.getCommand(), jobPayload.getScheduledAt(), partition);
-
+        log.info("""
+                        
+                        ==================================================
+                        [{}] RECEIVED JOB
+                        ==================================================
+                          Topic:        {}
+                          Cluster:      {}
+                          Job ID:       {}
+                          Command:      {}
+                          Scheduled At: {}
+                          Partition:    {}
+                        ==================================================""",
+                consumerId,
+                topic,
+                jobPayload.getCluster(),
+                jobPayload.getJobId(),
+                jobPayload.getCommand(),
+                jobPayload.getScheduledAt(),
+                partition
+        );
         if (command == null || command.trim().isEmpty()) {
             log.warn("[{}] Empty command received for job {}, skipping execution.", consumerId, jobPayload.getJobId());
             return;
@@ -47,8 +64,26 @@ public class CommandExecutor {
 
             int exitCode = process.exitValue();
             String resultOutput = output.toString().trim();
-            log.info("[{}] COMPLETED -> JobId: {}\n, ExitCode: {}\n---OUTPUT ---\n{} --------", consumerId, jobPayload.getJobId(), exitCode, resultOutput);
-
+            log.info("""
+                            
+                            ==================================================
+                            [{}] COMPLETED JOB
+                            ==================================================
+                              Topic:        {}
+                              Cluster:      {}
+                              Job ID:       {}
+                              Exit Code:    {}
+                            --------------------------------------------------
+                            OUTPUT:
+                            {}
+                            ==================================================""",
+                    consumerId,
+                    topic,
+                    jobPayload.getCluster(),
+                    jobPayload.getJobId(),
+                    exitCode,
+                    resultOutput
+            );
         } catch (Exception e) {
             log.error("[{}] FAILED TO EXECUTE -> jobID: {}", consumerId, jobPayload.getJobId(), e);
         }

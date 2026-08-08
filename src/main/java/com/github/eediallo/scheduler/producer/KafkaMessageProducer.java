@@ -32,9 +32,9 @@ public class KafkaMessageProducer implements AutoCloseable {
         this.producer = new KafkaProducer<>(props);
     }
 
-    public void sendJob(String jobId, String command) {
+    public void sendJobTopic(String topicName, String jobId, String command, String cluster) {
         try {
-            JobPayload payload = new JobPayload(jobId, command, Instant.now().toString());
+            JobPayload payload = new JobPayload(jobId, command, cluster, Instant.now().toString());
             String jsonPayload = mapper.writeValueAsString(payload);
 
             // Random UUID key ensures messages are distributed across partitions
