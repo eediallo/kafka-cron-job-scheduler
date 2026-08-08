@@ -28,6 +28,19 @@
             <version>2.0.18</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>4.3.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.22.1</version>
+        </dependency>
+
+
     </dependencies>
     <build>
         <plugins>
@@ -51,7 +64,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.github.eediallo.scheduler.Main</mainClass>
+                            <mainClass>com.github.eediallo.scheduler.producer.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
