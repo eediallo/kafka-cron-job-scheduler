@@ -1,2 +1,3 @@
-* * * * * echo "Running every minute cron job"
-15 * * * * echo "Running job at minute 15"
+* * * * * uptime
+* * * * * cal
+15 * * * * w
