@@ -9,10 +9,20 @@ public class CronJob implements Job {
         try {
             KafkaMessageProducer producer = (KafkaMessageProducer) context.getScheduler().getContext().get("kafkaProducer");
 
-            Object rawlineNumber = context.getMergedJobDataMap().getString("lineNumber");
-            String lineNumber = rawlineNumber != null ? String.valueOf(rawlineNumber) : "0";
+            Object rawLineNumber = context.getMergedJobDataMap().getString("lineNumber");
+            String lineNumber = rawLineNumber != null ? String.valueOf(rawLineNumber) : "0";
+
+            String cluster = context.getMergedJobDataMap().getString("cluster");
+            if(cluster == null || cluster.trim().isEmpty()) {
+                cluster = "cluster-a"; // fallback default when cluster is not specified
+            }
+
+            String topicNam  = "cron=jobs-" + cluster.toLowerCase().trim();
+
+            String jobId = "job_" + lineNumber;
+
             String command = String.valueOf(context.getMergedJobDataMap().get("command"));
-            producer.sendJob("job_" + lineNumber, command);
+            producer.sendJobTopic(topicNam, jobId, command, cluster);
 
         } catch (SchedulerException e) {
             throw new RuntimeException(e);

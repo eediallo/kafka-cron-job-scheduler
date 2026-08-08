@@ -50,7 +50,7 @@ public class ConsumerService {
                 for (ConsumerRecord<String, String> record : records) {
                     try {
                         JobPayload payload = mapper.readValue(record.value(), JobPayload.class);
-                        executor.execute(consumerId, payload, record.partition());
+                        executor.execute(topic, consumerId, payload, record.partition());
 
                     } catch (Exception e) {
                         log.error("[{}] Error deserializing message on partition", consumerId, record.partition());
