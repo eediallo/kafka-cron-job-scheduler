@@ -2,6 +2,7 @@ package com.github.eediallo.scheduler.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.eediallo.scheduler.model.JobPayload;
+import com.github.eediallo.scheduler.producer.KafkaMessageProducer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -19,6 +20,7 @@ public class ConsumerService {
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final KafkaConsumer consumer;
+    private final KafkaMessageProducer producer;
     private final CommandExecutor executor;
     private String consumerId;
     private final String topic;
@@ -27,7 +29,9 @@ public class ConsumerService {
     public ConsumerService(String bootstrapServices, String topic, String consumerGroup, String consumerId) {
         this.topic = topic;
         this.consumerId = consumerId;
-        this.executor = new CommandExecutor();
+
+        this.producer = new KafkaMessageProducer(bootstrapServices, topic);
+        this.executor = new CommandExecutor(producer);
 
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServices);
@@ -42,7 +46,7 @@ public class ConsumerService {
     }
 
     public void start() {
-        log.info("[{}] Consumer service starte. Listening for scheduled jobs...", consumerId);
+        log.info("[{}] Consumer service started. Listening for scheduled jobs...", consumerId);
 
         try {
             while (running) {

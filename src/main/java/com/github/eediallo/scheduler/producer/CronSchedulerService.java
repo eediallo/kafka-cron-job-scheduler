@@ -18,9 +18,9 @@ public class CronSchedulerService {
     }
 
     private void scheduleLine(int lineNumber, String line) throws SchedulerException {
-        String[] parts = line.split("\\s+", 7);
+        String[] parts = line.split("\\s+", 8);
 
-        if (parts.length < 7) {
+        if (parts.length < 8) {
             System.err.println("Skipping invalid crontab line: " + lineNumber + ": " + line);
             return;
         }
@@ -29,11 +29,13 @@ public class CronSchedulerService {
 
         String targetCluster = parts[5].toLowerCase();
 
-        String command = parts[6];
+        int maxAttempts = Integer.parseInt(parts[6]);
+
+        String command = parts[7];
 
         String quartzCron = CronParserUtils.toQuartzCron(standardCron);
 
-        JobDetail job = JobBuilder.newJob(CronJob.class).withIdentity("job_" + lineNumber).usingJobData("lineNumber", String.valueOf(lineNumber)).usingJobData("cluster", targetCluster).usingJobData("command", command).build();
+        JobDetail job = JobBuilder.newJob(CronJob.class).withIdentity("job_" + lineNumber).usingJobData("lineNumber", String.valueOf(lineNumber)).usingJobData("cluster", targetCluster).usingJobData("maxAttempts", maxAttempts).usingJobData("command", command).build();
 
         Trigger trigger = TriggerBuilder.newTrigger().withIdentity("trigger_" + lineNumber).withSchedule(CronScheduleBuilder.cronSchedule(quartzCron)).build();
 

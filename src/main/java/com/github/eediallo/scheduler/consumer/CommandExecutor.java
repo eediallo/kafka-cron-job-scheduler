@@ -1,6 +1,7 @@
 package com.github.eediallo.scheduler.consumer;
 
 import com.github.eediallo.scheduler.model.JobPayload;
+import com.github.eediallo.scheduler.producer.KafkaMessageProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,11 @@ import java.util.concurrent.TimeUnit;
 
 public class CommandExecutor {
     private final Logger log = LoggerFactory.getLogger(CommandExecutor.class);
+    private KafkaMessageProducer producer;
+
+    public CommandExecutor(KafkaMessageProducer producer) {
+        this.producer = producer;
+    }
 
     public void execute(String topic, String consumerId, JobPayload jobPayload, int partition) {
         String command = jobPayload.getCommand();
@@ -24,6 +30,7 @@ public class CommandExecutor {
                           Command:      {}
                           Scheduled At: {}
                           Partition:    {}
+                          Remaining Attemps: {}
                         ==================================================""",
                 consumerId,
                 topic,
@@ -31,7 +38,8 @@ public class CommandExecutor {
                 jobPayload.getJobId(),
                 jobPayload.getCommand(),
                 jobPayload.getScheduledAt(),
-                partition
+                partition,
+                jobPayload.getRemainingAttempts()
         );
         if (command == null || command.trim().isEmpty()) {
             log.warn("[{}] Empty command received for job {}, skipping execution.", consumerId, jobPayload.getJobId());
@@ -63,6 +71,21 @@ public class CommandExecutor {
             }
 
             int exitCode = process.exitValue();
+            if (exitCode != 0) {
+                int remainingAttempts = jobPayload.getRemainingAttempts() - 1;
+                jobPayload.setRemainingAttempts(remainingAttempts);
+
+                if (remainingAttempts > 0) {
+                    String retryTopic = topic.endsWith("-retry") ? topic : topic + "-retry";
+                    log.warn("[{}] JOB FAILED (ExitCode: {}) -> Re-queuing to retry Topic: {}. Remaining Attempts: {}",
+                            consumerId, exitCode, retryTopic, remainingAttempts);
+                    producer.sentToRetryTopic(retryTopic, jobPayload);
+                } else {
+                    log.error("[{}] JOB FAILED PERMANENTLY -> job ID: {} exhausted all all attempts. Discarding.", consumerId, jobPayload.getJobId());
+                }
+
+                return;
+            }
             String resultOutput = output.toString().trim();
             log.info("""
                             
