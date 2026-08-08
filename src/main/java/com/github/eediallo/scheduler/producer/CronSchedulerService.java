@@ -1,6 +1,5 @@
 package com.github.eediallo.scheduler.producer;
 
-import com.github.eediallo.scheduler.CronParserUtils;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
