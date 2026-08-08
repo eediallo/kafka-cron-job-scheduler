@@ -17,11 +17,10 @@ public class KafkaMessageProducer implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(KafkaMessageProducer.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private final KafkaProducer<String, String> producer;
-    private final String topic;
+    private  final  String topic;
 
     public KafkaMessageProducer(String bootstrapSevers, String topic) {
-        this.topic = topic;
-
+    this.topic = topic;
         // set up properties
         Properties props = new Properties();
         props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapSevers);
@@ -32,25 +31,47 @@ public class KafkaMessageProducer implements AutoCloseable {
         this.producer = new KafkaProducer<>(props);
     }
 
-    public void sendJobTopic(String topicName, String jobId, String command, String cluster) {
+    /**
+     * send a newly scheduled job to a cluster specified topic
+     */
+    public void sendJobTopic(String topicName, String jobId, String command, String cluster, int maxAttempts) {
         try {
-            JobPayload payload = new JobPayload(jobId, command, cluster, Instant.now().toString());
+            JobPayload payload = new JobPayload(jobId, command, cluster, Instant.now().toString(), maxAttempts);
             String jsonPayload = mapper.writeValueAsString(payload);
 
             // Random UUID key ensures messages are distributed across partitions
             String messageKey = UUID.randomUUID().toString();
 
             // Create producer record
-            ProducerRecord<String, String> record = new ProducerRecord<>(topic, messageKey, jsonPayload);
+            ProducerRecord<String, String> record = new ProducerRecord<>(topicName, messageKey, jsonPayload);
             producer.send(record, ((metadata, exception) -> {
                 if (exception == null) {
-                    log.info("Producer job [{}] -> partition {}, Offset {}", jobId, metadata.partition(), metadata.offset());
+                    log.info("Producer job [{}] -> Topic: {},  partition {}, Offset {}", payload.getJobId(), metadata.topic(), metadata.partition(), metadata.offset());
                 } else {
-                    log.error("Failed to push job [{}] to kafka", jobId, exception);
+                    log.error("Failed to push job [{}] to kafka", payload.getJobId(), exception);
                 }
             }));
         } catch (Exception e) {
             log.error("Error building or serializing message payload for job [{}]", jobId, e);
+        }
+    }
+
+    /**
+     * Re-queues a failed job payload to the cluster retry topic
+     */
+    public void sentToRetryTopic(String retryTopic, JobPayload payload) {
+        try {
+            String jsonPayload = mapper.writeValueAsString(payload);
+            ProducerRecord<String, String> record = new ProducerRecord<>(retryTopic, payload.getJobId(), jsonPayload);
+            producer.send(record, ((metadata, exception) -> {
+                if (exception == null) {
+                    log.info("Re-queued job [{}] -> Retry Topic: {},  partition {}, Offset {}", payload.getJobId(), metadata.topic(), metadata.partition(), metadata.offset());
+                } else {
+                    log.error("Failed to re-queue job [{}] to retry topic: {}", payload.getJobId(), retryTopic, exception);
+                }
+            }));
+        } catch (Exception e) {
+            log.error("Error  serializing retry payload for job [{}]", payload.getJobId(), e);
         }
     }
 
